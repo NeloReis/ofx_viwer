@@ -115,20 +115,23 @@ class OFXViewer:
             
             if hasattr(account, 'statement'):
                 statement = account.statement
-                print(f"Period: {statement.start_date} to {statement.end_date}")
-                print(f"Balance: ${statement.balance}")
+                if hasattr(statement, 'start_date') and hasattr(statement, 'end_date'):
+                    print(f"Period: {statement.start_date} to {statement.end_date}")
+                if hasattr(statement, 'balance'):
+                    print(f"Balance: ${statement.balance}")
                 
-                transactions = statement.transactions
-                if transactions:
-                    print(f"\nTransaction Summary:")
-                    print(f"  Total Transactions: {len(transactions)}")
-                    
-                    total_debits = sum(txn.amount for txn in transactions if txn.amount < 0)
-                    total_credits = sum(txn.amount for txn in transactions if txn.amount > 0)
-                    
-                    print(f"  Total Credits: ${total_credits:.2f}")
-                    print(f"  Total Debits: ${total_debits:.2f}")
-                    print(f"  Net Change: ${(total_credits + total_debits):.2f}")
+                if hasattr(statement, 'transactions'):
+                    transactions = statement.transactions
+                    if transactions:
+                        print(f"\nTransaction Summary:")
+                        print(f"  Total Transactions: {len(transactions)}")
+                        
+                        total_debits = sum(txn.amount for txn in transactions if hasattr(txn, 'amount') and txn.amount < 0)
+                        total_credits = sum(txn.amount for txn in transactions if hasattr(txn, 'amount') and txn.amount > 0)
+                        
+                        print(f"  Total Credits: ${total_credits:.2f}")
+                        print(f"  Total Debits: ${total_debits:.2f}")
+                        print(f"  Net Change: ${(total_credits + total_debits):.2f}")
         
         print("\n" + "="*70 + "\n")
 
@@ -157,13 +160,13 @@ Examples:
     parser.add_argument('ofx_file', help='Path to the OFX file')
     parser.add_argument('-v', '--view', action='store_true', 
                        help='View detailed OFX file contents')
-    parser.add_argument('-p', '--print', action='store_true',
+    parser.add_argument('-p', '--print', dest='print_summary', action='store_true',
                        help='Print summary suitable for printing')
     
     args = parser.parse_args()
     
     # If no flags specified, default to view
-    if not args.view and not args.print:
+    if not args.view and not args.print_summary:
         args.view = True
     
     # Create viewer and parse file
@@ -176,7 +179,7 @@ Examples:
     if args.view:
         viewer.view()
     
-    if args.print:
+    if args.print_summary:
         viewer.print_summary()
 
 
