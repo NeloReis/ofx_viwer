@@ -1,0 +1,2722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OFX File Viewer</title>
+    <style>
+        /*
+         * ===========================================
+         * CSS Variables for Theme Support
+         * ===========================================
+         * Using CSS custom properties allows easy theme switching
+         * by just toggling a class on the body element.
+         */
+        
+        :root {
+            /* Light Theme (Default) */
+            --bg-primary: #f8f9fa;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #e9ecef;
+            --text-primary: #212529;
+            --text-secondary: #495057;
+            --text-muted: #6c757d;
+            --border-color: #dee2e6;
+            --accent-color: #0d6efd;
+            --accent-hover: #0b5ed7;
+            --success-color: #198754;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --shadow-color-strong: rgba(0, 0, 0, 0.15);
+            --table-stripe: #f8f9fa;
+            --table-hover: #e9ecef;
+            --drop-zone-bg: #f0f7ff;
+            --drop-zone-border: #0d6efd;
+            --card-bg: #ffffff;
+            --header-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --scrollbar-track: #f1f1f1;
+            --scrollbar-thumb: #c1c1c1;
+        }
+
+        /* Dark Theme */
+        body.dark-theme {
+            --bg-primary: #121212;
+            --bg-secondary: #1e1e1e;
+            --bg-tertiary: #2d2d2d;
+            --text-primary: #e4e4e4;
+            --text-secondary: #b0b0b0;
+            --text-muted: #888888;
+            --border-color: #404040;
+            --accent-color: #6ea8fe;
+            --accent-hover: #8bb9fe;
+            --success-color: #75b798;
+            --danger-color: #ea868f;
+            --warning-color: #ffda6a;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --shadow-color-strong: rgba(0, 0, 0, 0.5);
+            --table-stripe: #252525;
+            --table-hover: #333333;
+            --drop-zone-bg: #1a2332;
+            --drop-zone-border: #6ea8fe;
+            --card-bg: #1e1e1e;
+            --header-bg: linear-gradient(135deg, #434d7e 0%, #553d6e 100%);
+            --scrollbar-track: #2d2d2d;
+            --scrollbar-thumb: #555555;
+        }
+
+        /*
+         * ===========================================
+         * Base Styles & Reset
+         * ===========================================
+         */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--scrollbar-track);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--scrollbar-thumb);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /*
+         * ===========================================
+         * Header Styles
+         * ===========================================
+         */
+        header {
+            background: var(--header-bg);
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px var(--shadow-color-strong);
+            position: relative;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            font-size: 2rem;
+        }
+
+        h1 {
+            color: white;
+            font-size: 1.75rem;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Theme Toggle Button */
+        .theme-toggle {
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: white;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: scale(1.05);
+        }
+
+        .theme-toggle .icon {
+            font-size: 1.25rem;
+            transition: transform 0.3s ease;
+        }
+
+        .theme-toggle:hover .icon {
+            transform: rotate(20deg);
+        }
+
+        /*
+         * ===========================================
+         * Main Container
+         * ===========================================
+         */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /*
+         * ===========================================
+         * Drag & Drop Zone
+         * ===========================================
+         */
+        .drop-zone {
+            background: var(--drop-zone-bg);
+            border: 3px dashed var(--drop-zone-border);
+            border-radius: 16px;
+            padding: 3rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 2rem;
+        }
+
+        .drop-zone:hover,
+        .drop-zone.drag-over {
+            background: var(--bg-tertiary);
+            border-color: var(--accent-hover);
+            transform: scale(1.01);
+        }
+
+        .drop-zone.drag-over {
+            box-shadow: 0 0 20px var(--shadow-color-strong);
+        }
+
+        .drop-zone-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .drop-zone h2 {
+            font-size: 1.5rem;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .drop-zone p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .drop-zone .file-types {
+            margin-top: 1rem;
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .file-type-badge {
+            background: var(--accent-color);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        /* Hidden file input */
+        #file-input {
+            display: none;
+        }
+
+        /*
+         * ===========================================
+         * Loading Indicator
+         * ===========================================
+         */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--border-color);
+            border-top-color: var(--accent-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /*
+         * ===========================================
+         * Error Message
+         * ===========================================
+         */
+        .error-message {
+            display: none;
+            background: var(--bg-secondary);
+            border-left: 4px solid var(--danger-color);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        .error-message.active {
+            display: block;
+        }
+
+        .error-message h3 {
+            color: var(--danger-color);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .error-message p {
+            color: var(--text-secondary);
+        }
+
+        /*
+         * ===========================================
+         * Results Container (Hidden until file loaded)
+         * ===========================================
+         */
+        .results {
+            display: none;
+        }
+
+        .results.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /*
+         * ===========================================
+         * Section Headers
+         * ===========================================
+         */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .section-header .icon {
+            font-size: 1.5rem;
+        }
+
+        .section-header h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .section-header .badge {
+            background: var(--accent-color);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: auto;
+        }
+
+        /*
+         * ===========================================
+         * Metadata Cards
+         * ===========================================
+         */
+        .metadata-section {
+            margin-bottom: 2rem;
+        }
+
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .metadata-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.25rem;
+            transition: all 0.3s ease;
+        }
+
+        .metadata-card:hover {
+            box-shadow: 0 4px 12px var(--shadow-color);
+            transform: translateY(-2px);
+        }
+
+        .metadata-card .label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .metadata-card .value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            word-break: break-word;
+        }
+
+        .metadata-card .value.positive {
+            color: var(--success-color);
+        }
+
+        .metadata-card .value.negative {
+            color: var(--danger-color);
+        }
+
+        /* Additional Fields Section */
+        .additional-fields {
+            margin-top: 1.5rem;
+        }
+
+        .additional-fields-title {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .additional-fields-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.75rem;
+        }
+
+        .additional-field {
+            background: var(--bg-tertiary);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.875rem;
+        }
+
+        .additional-field .field-name {
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .additional-field .field-value {
+            color: var(--text-primary);
+            font-weight: 500;
+            margin-top: 0.25rem;
+            word-break: break-word;
+        }
+
+        /*
+         * ===========================================
+         * Transaction Table
+         * ===========================================
+         */
+        .transactions-section {
+            margin-bottom: 2rem;
+        }
+
+        .table-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .table-scroll {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-weight: 600;
+            text-align: left;
+            padding: 1rem;
+            border-bottom: 2px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 0.875rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        /* Alternating row colors */
+        tbody tr:nth-child(even) {
+            background: var(--table-stripe);
+        }
+
+        tbody tr {
+            transition: background-color 0.2s ease;
+        }
+
+        tbody tr:hover {
+            background: var(--table-hover);
+        }
+
+        /* Amount styling */
+        .amount {
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .amount.positive {
+            color: var(--success-color);
+        }
+
+        .amount.negative {
+            color: var(--danger-color);
+        }
+
+        /* Transaction type badges */
+        .type-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .type-CREDIT, .type-DEP, .type-DEPOSIT {
+            background: rgba(25, 135, 84, 0.15);
+            color: var(--success-color);
+        }
+
+        .type-DEBIT, .type-PAYMENT {
+            background: rgba(220, 53, 69, 0.15);
+            color: var(--danger-color);
+        }
+
+        .type-CHECK {
+            background: rgba(13, 110, 253, 0.15);
+            color: var(--accent-color);
+        }
+
+        .type-ATM, .type-CASH {
+            background: rgba(255, 193, 7, 0.15);
+            color: var(--warning-color);
+        }
+
+        .type-POS, .type-DIRECTDEBIT {
+            background: rgba(108, 117, 125, 0.15);
+            color: var(--text-muted);
+        }
+
+        .type-XFER, .type-TRANSFER {
+            background: rgba(111, 66, 193, 0.15);
+            color: #9461fb;
+        }
+
+        .type-OTHER, .type-FEE, .type-SRVCHG, .type-INT {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+        }
+
+        /* Description column */
+        .description {
+            max-width: 300px;
+        }
+
+        /* Transaction ID */
+        .txn-id {
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        
+        /* Date format switching - hide print version on screen */
+        .date-print {
+            display: none;
+        }
+        
+        .date-screen {
+            display: inline;
+        }
+
+        /* Empty state */
+        .no-transactions {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+
+        /*
+         * ===========================================
+         * Summary Stats
+         * ===========================================
+         */
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.25rem;
+            text-align: center;
+        }
+
+        .stat-card .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .stat-card .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 0.25rem;
+        }
+
+        /*
+         * ===========================================
+         * Footer
+         * ===========================================
+         */
+        footer {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            padding: 1.5rem 2rem;
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        footer p {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+
+        footer .note {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--bg-tertiary);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        /*
+         * ===========================================
+         * Print Button
+         * ===========================================
+         */
+        .print-button {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 1.5rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px var(--shadow-color);
+        }
+
+        .print-button:hover {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px var(--shadow-color-strong);
+        }
+
+        .print-button .icon {
+            font-size: 1.25rem;
+        }
+
+        /*
+         * ===========================================
+         * Print Styles - Compact A4 Bank Statement
+         * ===========================================
+         * These styles ONLY apply to print preview and printing
+         * Web view remains unchanged
+         */
+        @media print {
+            /* Compact page margins for A4 - save paper */
+            @page {
+                size: A4 portrait;
+                margin: 10mm 10mm 10mm 10mm;
+            }
+
+            /* Hide unnecessary elements */
+            header,
+            footer,
+            .drop-zone,
+            .loading,
+            .error-message,
+            .theme-toggle,
+            .print-button,
+            .section-header .icon,
+            .section-header .badge {
+                display: none !important;
+            }
+
+            /* Reset body styling for print - compact */
+            body {
+                background: white !important;
+                color: black !important;
+                font-size: 8pt;
+                line-height: 1.2;
+            }
+
+            .container {
+                max-width: 100%;
+                padding: 0;
+                margin: 0;
+            }
+
+            .results {
+                display: block !important;
+            }
+
+            /* Compact statement header */
+            .metadata-section {
+                margin-bottom: 3mm;
+                page-break-inside: avoid;
+            }
+
+            .section-header {
+                border-bottom: 1pt solid black;
+                margin-bottom: 2mm;
+                padding-bottom: 1mm;
+            }
+
+            .section-header h2 {
+                font-size: 10pt;
+                font-weight: bold;
+                color: black;
+                margin: 0;
+            }
+
+            /* Metadata - compact inline format */
+            .metadata-grid {
+                display: block;
+                margin-bottom: 3mm;
+                font-size: 7pt;
+                line-height: 1.3;
+            }
+
+            .metadata-card {
+                display: inline;
+                background: none !important;
+                border: none;
+                padding: 0;
+                margin: 0;
+            }
+
+            .metadata-card::after {
+                content: " | ";
+                margin: 0 1mm;
+            }
+
+            .metadata-card:last-child::after {
+                content: "";
+            }
+
+            .metadata-card .label {
+                font-size: 7pt;
+                color: #555;
+                font-weight: normal;
+            }
+
+            .metadata-card .label::after {
+                content: ": ";
+            }
+
+            .metadata-card .value {
+                font-size: 7pt;
+                font-weight: bold;
+                color: black;
+            }
+
+            /* Hide additional fields */
+            .additional-fields {
+                display: none !important;
+            }
+
+            /* Summary stats - compact single line */
+            .summary-stats {
+                display: block;
+                margin-bottom: 3mm;
+                font-size: 7pt;
+                page-break-inside: avoid;
+                border-top: 0.5pt solid #ccc;
+                border-bottom: 0.5pt solid #ccc;
+                padding: 1mm 0;
+            }
+
+            .stat-card {
+                display: inline;
+                background: none !important;
+                border: none;
+                padding: 0;
+                margin: 0 3mm 0 0;
+            }
+
+            .stat-card .stat-label {
+                font-size: 7pt;
+                color: #555;
+                font-weight: normal;
+            }
+
+            .stat-card .stat-label::after {
+                content: ": ";
+            }
+
+            .stat-card .stat-value {
+                font-size: 7pt;
+                font-weight: bold;
+                color: black;
+            }
+
+            /* Transactions section - minimal spacing */
+            .transactions-section {
+                margin-top: 2mm;
+            }
+
+            .table-container {
+                background: white !important;
+                border: 0.5pt solid #999;
+            }
+
+            .table-scroll {
+                max-height: none;
+                overflow: visible;
+            }
+
+            /* Compact table - one transaction per line */
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 7pt;
+            }
+
+            thead {
+                position: static;
+                background: white !important;
+                display: table-header-group;
+            }
+
+            tbody {
+                display: table-row-group;
+            }
+
+            th {
+                background: #e8e8e8 !important;
+                color: black !important;
+                font-weight: bold;
+                padding: 1mm 0.5mm;
+                border: 0.5pt solid #999;
+                text-align: left;
+                font-size: 7pt;
+                text-transform: uppercase;
+            }
+
+            td {
+                padding: 0.8mm 0.5mm;
+                border-bottom: 0.25pt solid #ddd;
+                border-left: none;
+                border-right: none;
+                color: black !important;
+                background: white !important;
+                vertical-align: middle;
+            }
+
+            /* Light zebra striping */
+            tbody tr:nth-child(even) {
+                background: #fafafa !important;
+            }
+
+            tbody tr:hover {
+                background: white !important;
+            }
+
+            /* One transaction per line - no breaking */
+            tr {
+                page-break-inside: avoid;
+            }
+
+            /* Optimized column widths */
+            th:nth-child(1), td:nth-child(1) { width: 12%; }  /* Date */
+            th:nth-child(2), td:nth-child(2) { width: 9%; }   /* Type */
+            th:nth-child(3), td:nth-child(3) { width: 42%; }  /* Description */
+            th:nth-child(4), td:nth-child(4) { width: 13%; text-align: right; } /* Amount */
+            th:nth-child(5), td:nth-child(5) { width: 17%; }  /* Transaction ID */
+            th:nth-child(6), td:nth-child(6) { width: 7%; }   /* Check # */
+
+            /* Amount styling */
+            .amount {
+                font-family: 'Courier New', Courier, monospace;
+                font-weight: bold;
+                color: black !important;
+                font-size: 7pt;
+            }
+
+            /* Compact type badges */
+            .type-badge {
+                background: none !important;
+                color: black !important;
+                border: 0.5pt solid #999;
+                padding: 0.3mm 0.8mm;
+                font-size: 6pt;
+                text-transform: uppercase;
+                font-weight: normal;
+            }
+
+            /* Transaction ID */
+            .txn-id {
+                font-size: 6pt;
+                color: #666;
+                font-family: 'Courier New', Courier, monospace;
+            }
+
+            /* Description - ensure single line */
+            .description {
+                font-size: 7pt;
+                max-width: none;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            
+            /* Date format - show short numeric format in print */
+            .date-screen {
+                display: none !important;
+            }
+            
+            .date-print {
+                display: inline !important;
+                white-space: nowrap;
+            }
+
+            /* Page break controls */
+            .metadata-section,
+            .summary-stats {
+                page-break-after: avoid;
+            }
+
+            .section-header {
+                page-break-after: avoid;
+            }
+
+            thead {
+                page-break-after: avoid;
+            }
+        }
+
+        /*
+         * ===========================================
+         * Responsive Design
+         * ===========================================
+         */
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                gap: 1rem;
+                text-align: center;
+            }
+
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+
+            .drop-zone {
+                padding: 2rem 1rem;
+            }
+
+            .drop-zone-icon {
+                font-size: 3rem;
+            }
+
+            .metadata-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .table-scroll {
+                overflow-x: auto;
+            }
+
+            table {
+                min-width: 700px;
+            }
+
+            .summary-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header with logo and theme toggle -->
+    <header>
+        <div class="logo">
+            <span class="logo-icon">📊</span>
+            <div>
+                <h1>OFX File Viewer</h1>
+                <p class="subtitle">Open Financial Exchange Parser</p>
+            </div>
+        </div>
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+            <span class="icon" id="theme-icon">🌙</span>
+            <span id="theme-text">Dark Mode</span>
+        </button>
+    </header>
+
+    <div class="container">
+        <!-- Drag & Drop Zone -->
+        <div class="drop-zone" id="drop-zone">
+            <span class="drop-zone-icon">📁</span>
+            <h2>Drop your OFX file here</h2>
+            <p>or click to browse and select a file</p>
+            <div class="file-types">
+                <span class="file-type-badge">.OFX</span>
+                <span class="file-type-badge">.QFX</span>
+                <span class="file-type-badge">OFX 1.x (SGML)</span>
+                <span class="file-type-badge">OFX 2.x (XML)</span>
+            </div>
+        </div>
+        <input type="file" id="file-input" accept=".ofx,.qfx,.OFX,.QFX">
+
+        <!-- Loading Indicator -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Parsing OFX file...</p>
+        </div>
+
+        <!-- Error Message -->
+        <div class="error-message" id="error-message">
+            <h3>⚠️ Error</h3>
+            <p id="error-text"></p>
+        </div>
+
+        <!-- Results Section (hidden until file is loaded) -->
+        <div class="results" id="results">
+            <!-- Print Button -->
+            <button class="print-button" id="print-button" aria-label="Print statement">
+                <span class="icon">🖨️</span>
+                <span>Print Statement</span>
+            </button>
+
+            <!-- Metadata Section -->
+            <section class="metadata-section">
+                <div class="section-header">
+                    <span class="icon">📋</span>
+                    <h2>Statement Information</h2>
+                </div>
+                <div class="metadata-grid" id="metadata-grid">
+                    <!-- Metadata cards will be inserted here -->
+                </div>
+                <div class="additional-fields" id="additional-fields" style="display: none;">
+                    <div class="additional-fields-title">
+                        <span>🔍</span>
+                        <span>Additional Fields</span>
+                    </div>
+                    <div class="additional-fields-grid" id="additional-fields-grid">
+                        <!-- Additional/unrecognized fields will be inserted here -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Summary Stats -->
+            <div class="summary-stats" id="summary-stats">
+                <!-- Summary statistics will be inserted here -->
+            </div>
+
+            <!-- Transactions Section -->
+            <section class="transactions-section">
+                <div class="section-header">
+                    <span class="icon">💳</span>
+                    <h2>Transactions</h2>
+                    <span class="badge" id="transaction-count">0</span>
+                </div>
+                <div class="table-container">
+                    <div class="table-scroll">
+                        <table id="transactions-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Description</th>
+                                    <th>Amount</th>
+                                    <th>Transaction ID</th>
+                                    <th>Check #</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactions-body">
+                                <!-- Transactions will be inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>Supports OFX 1.x (SGML) and OFX 2.x (XML) formats from all major financial institutions.</p>
+        <div class="note">
+            <span>🔒</span>
+            <span>Read-only viewer • All processing happens locally in your browser • No data is uploaded</span>
+        </div>
+    </footer>
+
+    <script>
+        /**
+         * ===========================================
+         * OFX FILE VIEWER - JavaScript Implementation
+         * ===========================================
+         * 
+         * This script provides comprehensive OFX parsing supporting:
+         * - OFX 1.x (SGML format) - tags without closing tags: <TAG>value
+         * - OFX 2.x (XML format) - proper XML with closing tags: <TAG>value</TAG>
+         * - Various date formats (YYYYMMDD, YYYYMMDDHHMMSS, with timezone)
+         * - Different bank implementations and tag variations
+         * - Graceful handling of missing/optional fields
+         * 
+         * OFX Structure Overview:
+         * -----------------------
+         * OFX files have a header section and a data section.
+         * 
+         * Header (SGML): OFXHEADER:100, DATA:OFXSGML, VERSION:102, etc.
+         * Header (XML): <?OFX ... ?> or standard XML declaration
+         * 
+         * Data section contains nested elements like:
+         * - SIGNONMSGSRSV1: Sign-on response (institution info)
+         * - BANKMSGSRSV1: Banking messages (statements)
+         * - CREDITCARDMSGSRSV1: Credit card messages
+         * - INVSTMTMSGSRSV1: Investment statements
+         * 
+         * Key Tags:
+         * ---------
+         * STMTRS/CCSTMTRS: Statement response
+         * CURDEF: Currency (USD, EUR, etc.)
+         * BANKACCTFROM/CCACCTFROM: Account info
+         * BANKTRANLIST: Transaction list
+         * STMTTRN: Individual transaction
+         * LEDGERBAL: Ledger balance
+         * AVAILBAL: Available balance
+         */
+
+        // ===========================================
+        // Theme Management
+        // ===========================================
+        
+        const themeToggle = document.getElementById('theme-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const themeText = document.getElementById('theme-text');
+        
+        /**
+         * Initialize theme from localStorage or system preference
+         */
+        function initTheme() {
+            const savedTheme = localStorage.getItem('ofx-viewer-theme');
+            
+            if (savedTheme === 'dark') {
+                document.body.classList.add('dark-theme');
+                updateThemeButton(true);
+            } else if (savedTheme === 'light') {
+                document.body.classList.remove('dark-theme');
+                updateThemeButton(false);
+            } else {
+                // Check system preference
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    document.body.classList.add('dark-theme');
+                    updateThemeButton(true);
+                }
+            }
+        }
+        
+        /**
+         * Update theme toggle button appearance
+         */
+        function updateThemeButton(isDark) {
+            if (isDark) {
+                themeIcon.textContent = '☀️';
+                themeText.textContent = 'Light Mode';
+            } else {
+                themeIcon.textContent = '🌙';
+                themeText.textContent = 'Dark Mode';
+            }
+        }
+        
+        /**
+         * Toggle between light and dark themes
+         */
+        themeToggle.addEventListener('click', () => {
+            const isDark = document.body.classList.toggle('dark-theme');
+            localStorage.setItem('ofx-viewer-theme', isDark ? 'dark' : 'light');
+            updateThemeButton(isDark);
+        });
+        
+        // Initialize theme on load
+        initTheme();
+
+        // ===========================================
+        // Print Functionality
+        // ===========================================
+        
+        const printButton = document.getElementById('print-button');
+        
+        /**
+         * Print the statement in a clean A4 format
+         */
+        printButton.addEventListener('click', () => {
+            window.print();
+        });
+
+        // ===========================================
+        // File Upload & Drag-Drop Handling
+        // ===========================================
+        
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const loading = document.getElementById('loading');
+        const errorMessage = document.getElementById('error-message');
+        const errorText = document.getElementById('error-text');
+        const results = document.getElementById('results');
+        
+        // Click to browse
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+        
+        // Drag and drop events
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            
+            if (e.dataTransfer.files.length > 0) {
+                handleFile(e.dataTransfer.files[0]);
+            }
+        });
+        
+        /**
+         * ===========================================
+         * Brazilian Portuguese Encoding Fixer
+         * ===========================================
+         * Many Brazilian banks use incorrect encoding (ISO-8859-1/Windows-1252)
+         * but declare UTF-8 or USASCII, causing character corruption.
+         * This function fixes common corruption patterns.
+         */
+        
+        /**
+         * Build the encoding fix map programmatically to avoid character issues
+         * Maps corrupted UTF-8 byte sequences to correct Portuguese characters
+         */
+        function buildEncodingFixMap() {
+            const map = {};
+            
+            // Lowercase accented letters (when Latin-1 0xE0-0xFF read as UTF-8)
+            // Pattern: Latin-1 high byte becomes Ã + modified second byte
+            map['\u00C3\u00A1'] = 'á';  // á (0xE1)
+            map['\u00C3\u00A0'] = 'à';  // à (0xE0)
+            map['\u00C3\u00A2'] = 'â';  // â (0xE2)
+            map['\u00C3\u00A3'] = 'ã';  // ã (0xE3)
+            map['\u00C3\u00A4'] = 'ä';  // ä (0xE4)
+            map['\u00C3\u00A9'] = 'é';  // é (0xE9)
+            map['\u00C3\u00A8'] = 'è';  // è (0xE8)
+            map['\u00C3\u00AA'] = 'ê';  // ê (0xEA)
+            map['\u00C3\u00AB'] = 'ë';  // ë (0xEB)
+            map['\u00C3\u00AD'] = 'í';  // í (0xED)
+            map['\u00C3\u00AC'] = 'ì';  // ì (0xEC)
+            map['\u00C3\u00AE'] = 'î';  // î (0xEE)
+            map['\u00C3\u00AF'] = 'ï';  // ï (0xEF)
+            map['\u00C3\u00B3'] = 'ó';  // ó (0xF3)
+            map['\u00C3\u00B2'] = 'ò';  // ò (0xF2)
+            map['\u00C3\u00B4'] = 'ô';  // ô (0xF4)
+            map['\u00C3\u00B5'] = 'õ';  // õ (0xF5)
+            map['\u00C3\u00B6'] = 'ö';  // ö (0xF6)
+            map['\u00C3\u00BA'] = 'ú';  // ú (0xFA)
+            map['\u00C3\u00B9'] = 'ù';  // ù (0xF9)
+            map['\u00C3\u00BB'] = 'û';  // û (0xFB)
+            map['\u00C3\u00BC'] = 'ü';  // ü (0xFC)
+            map['\u00C3\u00A7'] = 'ç';  // ç (0xE7)
+            map['\u00C3\u00B1'] = 'ñ';  // ñ (0xF1)
+            map['\u00C3\u00BF'] = 'ÿ';  // ÿ (0xFF)
+            map['\u00C3\u00BD'] = 'ý';  // ý (0xFD)
+            
+            // Uppercase accented letters (when Latin-1 0xC0-0xDF read as UTF-8)
+            map['\u00C3\u0081'] = 'Á';  // Á (0xC1)
+            map['\u00C3\u0080'] = 'À';  // À (0xC0)
+            map['\u00C3\u0082'] = 'Â';  // Â (0xC2)
+            map['\u00C3\u0083'] = 'Ã';  // Ã (0xC3)
+            map['\u00C3\u0084'] = 'Ä';  // Ä (0xC4)
+            map['\u00C3\u0089'] = 'É';  // É (0xC9)
+            map['\u00C3\u0088'] = 'È';  // È (0xC8)
+            map['\u00C3\u008A'] = 'Ê';  // Ê (0xCA)
+            map['\u00C3\u008B'] = 'Ë';  // Ë (0xCB)
+            map['\u00C3\u008D'] = 'Í';  // Í (0xCD)
+            map['\u00C3\u008C'] = 'Ì';  // Ì (0xCC)
+            map['\u00C3\u008E'] = 'Î';  // Î (0xCE)
+            map['\u00C3\u008F'] = 'Ï';  // Ï (0xCF)
+            map['\u00C3\u0093'] = 'Ó';  // Ó (0xD3)
+            map['\u00C3\u0092'] = 'Ò';  // Ò (0xD2)
+            map['\u00C3\u0094'] = 'Ô';  // Ô (0xD4)
+            map['\u00C3\u0095'] = 'Õ';  // Õ (0xD5)
+            map['\u00C3\u0096'] = 'Ö';  // Ö (0xD6)
+            map['\u00C3\u009A'] = 'Ú';  // Ú (0xDA)
+            map['\u00C3\u0099'] = 'Ù';  // Ù (0xD9)
+            map['\u00C3\u009B'] = 'Û';  // Û (0xDB)
+            map['\u00C3\u009C'] = 'Ü';  // Ü (0xDC)
+            map['\u00C3\u0087'] = 'Ç';  // Ç (0xC7)
+            map['\u00C3\u0091'] = 'Ñ';  // Ñ (0xD1)
+            
+            // Common symbols
+            map['\u00C2\u00BA'] = 'º';  // º (masculine ordinal)
+            map['\u00C2\u00AA'] = 'ª';  // ª (feminine ordinal)
+            map['\u00C2\u00B0'] = '°';  // ° (degree)
+            map['\u00C2\u00A9'] = '©';  // © (copyright)
+            map['\u00C2\u00AE'] = '®';  // ® (registered)
+            map['\u00C2\u00B2'] = '²';  // ² (superscript 2)
+            map['\u00C2\u00B3'] = '³';  // ³ (superscript 3)
+            
+            return map;
+        }
+        
+        // Build the map once
+        const ENCODING_FIX_MAP = buildEncodingFixMap();
+        
+        /**
+         * Fix encoding issues in text content
+         * Handles multiple types of encoding corruption
+         */
+        function fixPortugueseEncoding(text) {
+            if (!text) return text;
+            
+            let fixed = text;
+            
+            // Fix known corruption patterns from the map
+            for (const [corrupted, correct] of Object.entries(ENCODING_FIX_MAP)) {
+                if (fixed.includes(corrupted)) {
+                    fixed = fixed.split(corrupted).join(correct);
+                }
+            }
+            
+            // Additional pattern-based fixes using regex
+            // These catch variations that might slip through
+            const regexFixes = [
+                // Lowercase patterns
+                [/\u00C3[\u00A0-\u00A4]/g, m => String.fromCharCode(0xE0 + (m.charCodeAt(1) - 0xA0))],
+                [/\u00C3[\u00A7-\u00AF]/g, m => String.fromCharCode(0xE0 + (m.charCodeAt(1) - 0xA0))],
+                [/\u00C3[\u00B0-\u00BF]/g, m => String.fromCharCode(0xE0 + (m.charCodeAt(1) - 0xA0))],
+                // Uppercase patterns  
+                [/\u00C3[\u0080-\u009F]/g, m => String.fromCharCode(0xC0 + (m.charCodeAt(1) - 0x80))],
+            ];
+            
+            for (const [pattern, replacer] of regexFixes) {
+                fixed = fixed.replace(pattern, replacer);
+            }
+            
+            // Fix replacement characters (�) - these indicate encoding issues
+            if (fixed.includes('\uFFFD')) {
+                console.warn('Found replacement characters in text, removing...');
+                fixed = fixed.replace(/\uFFFD/g, '');
+            }
+            
+            return fixed;
+        }
+        
+        /**
+         * Check if content has encoding issues
+         * Returns true if encoding problems are detected
+         */
+        function hasEncodingIssues(content) {
+            // Check for replacement character (indicates failed UTF-8 decode)
+            if (content.includes('\uFFFD')) return true;
+            
+            // Check for common UTF-8 mojibake patterns (Latin-1 misread as UTF-8)
+            // Pattern: Ã followed by specific byte ranges
+            const mojibakePattern = /\u00C3[\u0080-\u00BF]/;
+            if (mojibakePattern.test(content)) return true;
+            
+            // Check for Â patterns (another common corruption)
+            const anotherPattern = /\u00C2[\u00A0-\u00BF]/;
+            if (anotherPattern.test(content)) return true;
+            
+            return false;
+        }
+        
+        /**
+         * Detect the encoding from OFX header
+         * Brazilian banks often declare USASCII or UTF-8 but use Latin-1
+         */
+        function detectEncodingFromHeader(content) {
+            // Check for CHARSET header (common in Brazilian OFX)
+            const charsetMatch = content.match(/CHARSET:(\d+)/i);
+            if (charsetMatch) {
+                const charset = charsetMatch[1];
+                // Common charset codes:
+                // 1252 = Windows-1252 (Western European)
+                // 1 = ASCII
+                // 28591 = ISO-8859-1
+                if (charset === '1252' || charset === '28591') {
+                    return 'windows-1252';
+                }
+            }
+            
+            // Check for ENCODING header
+            const encodingMatch = content.match(/ENCODING:([^\n\r]+)/i);
+            if (encodingMatch) {
+                const encoding = encodingMatch[1].trim().toUpperCase();
+                if (encoding === 'USASCII' || encoding === 'ASCII') {
+                    // ASCII declared but likely Latin-1
+                    return 'windows-1252';
+                }
+                if (encoding.includes('8859') || encoding.includes('LATIN')) {
+                    return 'iso-8859-1';
+                }
+            }
+            
+            // Check for XML encoding declaration
+            const xmlEncodingMatch = content.match(/encoding=["']([^"']+)["']/i);
+            if (xmlEncodingMatch) {
+                return xmlEncodingMatch[1].toLowerCase();
+            }
+            
+            return null;
+        }
+        
+        /**
+         * Handle uploaded file with robust encoding support
+         */
+        function handleFile(file) {
+            // Validate file type
+            const validExtensions = ['.ofx', '.qfx'];
+            const fileName = file.name.toLowerCase();
+            const isValidType = validExtensions.some(ext => fileName.endsWith(ext));
+            
+            if (!isValidType) {
+                showError('Invalid file type. Please upload an OFX or QFX file.');
+                return;
+            }
+            
+            // Show loading
+            loading.classList.add('active');
+            errorMessage.classList.remove('active');
+            results.classList.remove('active');
+            
+            // Try reading with multiple encodings for Brazilian bank compatibility
+            tryReadWithEncoding(file, 'UTF-8')
+                .then(content => {
+                    // Check if UTF-8 read resulted in encoding issues
+                    if (hasEncodingIssues(content)) {
+                        console.log('Detected encoding issues with UTF-8, trying Latin-1...');
+                        return tryReadWithEncoding(file, 'iso-8859-1');
+                    }
+                    return content;
+                })
+                .then(content => {
+                    // Check header for declared encoding
+                    const declaredEncoding = detectEncodingFromHeader(content);
+                    console.log('Declared encoding in file:', declaredEncoding);
+                    
+                    // If still has issues, try Windows-1252 (common in Brazilian banks)
+                    if (hasEncodingIssues(content)) {
+                        console.log('Still has encoding issues, trying Windows-1252...');
+                        return tryReadWithEncoding(file, 'windows-1252');
+                    }
+                    return content;
+                })
+                .then(content => {
+                    // Final fix: apply Portuguese encoding corrections
+                    // This handles cases where the encoding was partially correct
+                    const fixedContent = fixPortugueseEncoding(content);
+                    
+                    try {
+                        parseOFX(fixedContent);
+                    } catch (error) {
+                        showError('Failed to parse OFX file: ' + error.message);
+                        console.error('Parse error:', error);
+                    }
+                })
+                .catch(error => {
+                    showError('Failed to read file: ' + error.message);
+                    console.error('Read error:', error);
+                });
+        }
+        
+        /**
+         * Try reading file with a specific encoding
+         * Returns a Promise that resolves with the file content
+         */
+        function tryReadWithEncoding(file, encoding) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                
+                reader.onload = (e) => {
+                    resolve(e.target.result);
+                };
+                
+                reader.onerror = () => {
+                    reject(new Error(`Failed to read file with ${encoding} encoding`));
+                };
+                
+                reader.readAsText(file, encoding);
+            });
+        }
+        
+        /**
+         * Show error message
+         */
+        function showError(message) {
+            loading.classList.remove('active');
+            errorText.textContent = message;
+            errorMessage.classList.add('active');
+        }
+
+        // ===========================================
+        // OFX Parsing Logic
+        // ===========================================
+        
+        /**
+         * Main OFX parsing function
+         * Handles both SGML (OFX 1.x) and XML (OFX 2.x) formats
+         * Also handles hybrid formats (SGML header with XML-style closing tags)
+         */
+        function parseOFX(content) {
+            console.log('Starting OFX parsing...');
+            
+            // Normalize content - handle different line endings
+            content = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+            
+            // Parse header information
+            const headerInfo = parseHeader(content);
+            console.log('Header info:', headerInfo);
+            
+            // Extract the OFX data section
+            let ofxData = extractOFXData(content);
+            
+            if (!ofxData) {
+                throw new Error('Could not find OFX data section in file. The file may be corrupted or in an unsupported format.');
+            }
+            
+            // Normalize whitespace in OFX data for more reliable parsing
+            // Remove leading/trailing whitespace from each line
+            ofxData = ofxData.split('\n').map(line => line.trim()).join('\n');
+            // Collapse multiple newlines
+            ofxData = ofxData.replace(/\n+/g, '\n');
+            
+            console.log('OFX data length:', ofxData.length);
+            
+            // Detect format: Check if file has proper closing tags (XML-style)
+            // Count opening vs closing tags to determine format
+            const hasClosingTags = (ofxData.match(/<\/[A-Z0-9]+>/gi) || []).length > 10;
+            const isXMLHeader = content.includes('<?xml') || content.includes('<?OFX');
+            
+            console.log('Has closing tags:', hasClosingTags, 'XML header:', isXMLHeader);
+            
+            // Parse the OFX structure
+            let parsedData;
+            if (hasClosingTags || isXMLHeader) {
+                // File has XML-style closing tags, parse as XML
+                console.log('Parsing as XML...');
+                parsedData = parseXMLOFX(ofxData);
+            } else {
+                // Pure SGML format
+                console.log('Parsing as SGML...');
+                parsedData = parseSGMLOFX(ofxData);
+            }
+            
+            console.log('Parsed data structure:', JSON.stringify(parsedData, null, 2).substring(0, 2000));
+            
+            // Extract all relevant information
+            const metadata = extractMetadata(parsedData, headerInfo);
+            const transactions = extractTransactions(parsedData);
+            const additionalFields = extractAdditionalFields(parsedData);
+            
+            console.log('Parsed metadata:', metadata);
+            console.log('Parsed transactions:', transactions.length);
+            console.log('Additional fields:', additionalFields);
+            
+            // Display results
+            displayResults(metadata, transactions, additionalFields);
+        }
+        
+        /**
+         * Parse OFX header (contains version and encoding info)
+         * 
+         * SGML Header Example:
+         * OFXHEADER:100
+         * DATA:OFXSGML
+         * VERSION:102
+         * SECURITY:NONE
+         * ENCODING:USASCII
+         * CHARSET:1252
+         * COMPRESSION:NONE
+         * OLDFILEUID:NONE
+         * NEWFILEUID:NONE
+         */
+        function parseHeader(content) {
+            const header = {};
+            
+            // Common header fields
+            const headerFields = [
+                'OFXHEADER', 'DATA', 'VERSION', 'SECURITY', 'ENCODING',
+                'CHARSET', 'COMPRESSION', 'OLDFILEUID', 'NEWFILEUID'
+            ];
+            
+            headerFields.forEach(field => {
+                const regex = new RegExp(`${field}:([^\\n\\r]+)`, 'i');
+                const match = content.match(regex);
+                if (match) {
+                    header[field] = match[1].trim();
+                }
+            });
+            
+            return header;
+        }
+        
+        /**
+         * Extract OFX data section from file content
+         */
+        function extractOFXData(content) {
+            // Find the <OFX> tag (case insensitive)
+            const ofxMatch = content.match(/<OFX[^>]*>([\s\S]*)<\/OFX>/i);
+            if (ofxMatch) {
+                return '<OFX>' + ofxMatch[1] + '</OFX>';
+            }
+            
+            // Try to find just <OFX> without closing tag (SGML)
+            const sgmlMatch = content.match(/<OFX[^>]*>([\s\S]+)/i);
+            if (sgmlMatch) {
+                return '<OFX>' + sgmlMatch[1];
+            }
+            
+            return null;
+        }
+        
+        /**
+         * Parse XML-based OFX (version 2.x) or hybrid format
+         */
+        function parseXMLOFX(ofxData) {
+            // Clean up the OFX data for XML parsing
+            // Remove whitespace between tags (handles indented files like UNICRED)
+            ofxData = ofxData.replace(/>\s+</g, '><');
+            
+            // Also trim whitespace inside tag values by removing leading/trailing whitespace
+            ofxData = ofxData.replace(/>(\s*)([^<]+?)(\s*)</g, (match, ws1, content, ws2) => {
+                return '>' + content.trim() + '<';
+            });
+            
+            // Wrap in a root element if needed to ensure valid XML
+            if (!ofxData.trim().startsWith('<?xml')) {
+                ofxData = '<?xml version="1.0" encoding="UTF-8"?>' + ofxData;
+            }
+            
+            // Create a DOM parser for XML
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(ofxData, 'text/xml');
+            
+            // Check for parsing errors
+            const parseError = doc.querySelector('parsererror');
+            if (parseError) {
+                console.warn('XML parsing had errors:', parseError.textContent);
+                console.log('Falling back to regex-based parser');
+                return regexParseOFX(ofxData);
+            }
+            
+            const result = xmlToObject(doc.documentElement);
+            console.log('XML parsed successfully');
+            return result;
+        }
+        
+        /**
+         * Convert XML DOM to JavaScript object
+         */
+        function xmlToObject(element) {
+            const obj = {};
+            
+            // Get all child nodes (not just elements)
+            for (const child of element.childNodes) {
+                // Skip text nodes, comments, etc.
+                if (child.nodeType !== 1) continue; // 1 = ELEMENT_NODE
+                
+                const tagName = child.tagName.toUpperCase();
+                
+                if (child.children && child.children.length > 0) {
+                    // Has child elements - recurse
+                    const childObj = xmlToObject(child);
+                    
+                    // Handle multiple elements with same tag (e.g., multiple STMTTRN)
+                    if (obj[tagName]) {
+                        if (!Array.isArray(obj[tagName])) {
+                            obj[tagName] = [obj[tagName]];
+                        }
+                        obj[tagName].push(childObj);
+                    } else {
+                        obj[tagName] = childObj;
+                    }
+                } else {
+                    // Leaf element - get text content
+                    const textContent = child.textContent.trim();
+                    
+                    // Handle multiple elements with same tag
+                    if (obj[tagName]) {
+                        if (!Array.isArray(obj[tagName])) {
+                            obj[tagName] = [obj[tagName]];
+                        }
+                        obj[tagName].push(textContent);
+                    } else {
+                        obj[tagName] = textContent;
+                    }
+                }
+            }
+            
+            return obj;
+        }
+        
+        /**
+         * Parse SGML-based OFX (version 1.x)
+         * 
+         * SGML OFX doesn't require closing tags for simple values:
+         * <ACCTID>12345
+         * <ACCTTYPE>CHECKING
+         * 
+         * But aggregate tags still need structure:
+         * <BANKACCTFROM>
+         * <BANKID>123456789
+         * <ACCTID>12345
+         * </BANKACCTFROM>
+         */
+        function parseSGMLOFX(ofxData) {
+            // Convert SGML to proper XML by adding closing tags where missing
+            let xmlData = convertSGMLtoXML(ofxData);
+            
+            // Now parse as XML
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(xmlData, 'text/xml');
+            
+            // Check for errors and try alternative parsing if needed
+            const parseError = doc.querySelector('parsererror');
+            if (parseError) {
+                console.warn('XML conversion had issues, using regex-based parsing');
+                return regexParseOFX(ofxData);
+            }
+            
+            return xmlToObject(doc.documentElement);
+        }
+        
+        /**
+         * Convert SGML OFX to valid XML
+         * Adds closing tags for leaf elements
+         */
+        function convertSGMLtoXML(sgml) {
+            // List of aggregate tags (tags that contain other tags)
+            // These need to keep their </TAG> closing tags
+            const aggregateTags = [
+                'OFX', 'SIGNONMSGSRSV1', 'SONRS', 'STATUS', 'FI', 
+                'BANKMSGSRSV1', 'STMTTRNRS', 'STMTRS', 'BANKACCTFROM',
+                'BANKTRANLIST', 'STMTTRN', 'LEDGERBAL', 'AVAILBAL',
+                'CREDITCARDMSGSRSV1', 'CCSTMTTRNRS', 'CCSTMTRS', 'CCACCTFROM',
+                'INVSTMTMSGSRSV1', 'INVSTMTTRNRS', 'INVSTMTRS', 'INVACCTFROM',
+                'SIGNUPMSGSRSV1', 'ACCTINFOTRNRS', 'ACCTINFORS', 'ACCTINFO',
+                'BANKACCTINFO', 'CCACCTINFO', 'INVACCTINFO',
+                'PAYEE', 'CURRENCY', 'ORIGCURRENCY', 'BALLIST', 'BAL',
+                'INCTRAN', 'STOCKINFO', 'MFINFO', 'OPTINFO', 'DEBTINFO', 'OTHERINFO',
+                'INVTRANLIST', 'INVSTMTRS', 'INVPOSLIST', 'INVPOS', 'POSSTOCK', 'POSMF',
+                'POSDEBT', 'POSOPT', 'POSOTHER', 'INVBAL', 'INV401KBAL',
+                'SECLIST', 'SECINFO'
+            ];
+            
+            // Normalize line endings
+            sgml = sgml.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+            
+            // Process line by line
+            const lines = sgml.split('\n');
+            const result = [];
+            
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i].trim();
+                if (!line) continue;
+                
+                // Check for opening tags
+                const tagMatch = line.match(/^<([A-Z0-9_.]+)>(.*)$/i);
+                
+                if (tagMatch) {
+                    const tagName = tagMatch[1].toUpperCase();
+                    const content = tagMatch[2].trim();
+                    
+                    // Check if this is an aggregate tag (has nested content)
+                    const isAggregate = aggregateTags.includes(tagName) || content === '';
+                    
+                    if (isAggregate) {
+                        // Aggregate tag - keep as is (may have content on same line)
+                        if (content) {
+                            result.push(`<${tagName}>${content}</${tagName}>`);
+                        } else {
+                            result.push(`<${tagName}>`);
+                        }
+                    } else {
+                        // Leaf tag - add closing tag
+                        result.push(`<${tagName}>${content}</${tagName}>`);
+                    }
+                } else if (line.match(/^<\/[A-Z0-9_.]+>$/i)) {
+                    // Closing tag - keep as is
+                    result.push(line);
+                } else {
+                    // Other content - keep as is
+                    result.push(line);
+                }
+            }
+            
+            return result.join('\n');
+        }
+        
+        /**
+         * Comprehensive regex-based parser for OFX files
+         * This handles both SGML and hybrid formats reliably
+         */
+        function regexParseOFX(ofxData) {
+            console.log('Using regex-based parser...');
+            
+            const data = {};
+            
+            // Helper to get tag value
+            const getTagValue = (content, tagName) => {
+                const regex = new RegExp(`<${tagName}>([^<]*?)(?:<\\/${tagName}>|(?=<[A-Z]))`, 'i');
+                const match = content.match(regex);
+                return match ? match[1].trim() : null;
+            };
+            
+            // Helper to get section content
+            const getSection = (content, tagName) => {
+                const regex = new RegExp(`<${tagName}>([\\s\\S]*?)<\\/${tagName}>`, 'i');
+                const match = content.match(regex);
+                return match ? match[1] : null;
+            };
+            
+            // Parse SIGNONMSGSRSV1
+            const signonSection = getSection(ofxData, 'SIGNONMSGSRSV1');
+            if (signonSection) {
+                const sonrs = getSection(signonSection, 'SONRS');
+                if (sonrs) {
+                    const fi = getSection(sonrs, 'FI');
+                    data.SIGNONMSGSRSV1 = {
+                        SONRS: {
+                            DTSERVER: getTagValue(sonrs, 'DTSERVER'),
+                            LANGUAGE: getTagValue(sonrs, 'LANGUAGE'),
+                            FI: fi ? {
+                                ORG: getTagValue(fi, 'ORG'),
+                                FID: getTagValue(fi, 'FID')
+                            } : {}
+                        }
+                    };
+                }
+            }
+            
+            // Parse BANKMSGSRSV1
+            const bankSection = getSection(ofxData, 'BANKMSGSRSV1');
+            if (bankSection) {
+                const stmttrnrs = getSection(bankSection, 'STMTTRNRS');
+                if (stmttrnrs) {
+                    const stmtrs = getSection(stmttrnrs, 'STMTRS');
+                    if (stmtrs) {
+                        // Parse account info
+                        const bankAcctFrom = getSection(stmtrs, 'BANKACCTFROM');
+                        const acctInfo = bankAcctFrom ? {
+                            BANKID: getTagValue(bankAcctFrom, 'BANKID'),
+                            BRANCHID: getTagValue(bankAcctFrom, 'BRANCHID'),
+                            ACCTID: getTagValue(bankAcctFrom, 'ACCTID'),
+                            ACCTTYPE: getTagValue(bankAcctFrom, 'ACCTTYPE')
+                        } : {};
+                        
+                        // Parse transactions
+                        const bankTranList = getSection(stmtrs, 'BANKTRANLIST');
+                        const transactions = [];
+                        
+                        if (bankTranList) {
+                            // Find all STMTTRN blocks
+                            const trnRegex = /<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi;
+                            let trnMatch;
+                            
+                            while ((trnMatch = trnRegex.exec(bankTranList)) !== null) {
+                                const trnContent = trnMatch[1];
+                                transactions.push({
+                                    TRNTYPE: getTagValue(trnContent, 'TRNTYPE'),
+                                    DTPOSTED: getTagValue(trnContent, 'DTPOSTED'),
+                                    TRNAMT: getTagValue(trnContent, 'TRNAMT'),
+                                    FITID: getTagValue(trnContent, 'FITID'),
+                                    CHECKNUM: getTagValue(trnContent, 'CHECKNUM'),
+                                    REFNUM: getTagValue(trnContent, 'REFNUM'),
+                                    MEMO: getTagValue(trnContent, 'MEMO'),
+                                    NAME: getTagValue(trnContent, 'NAME')
+                                });
+                            }
+                        }
+                        
+                        // Parse ledger balance
+                        const ledgerBal = getSection(stmtrs, 'LEDGERBAL');
+                        const ledgerBalInfo = ledgerBal ? {
+                            BALAMT: getTagValue(ledgerBal, 'BALAMT'),
+                            DTASOF: getTagValue(ledgerBal, 'DTASOF')
+                        } : {};
+                        
+                        // Parse available balance
+                        const availBal = getSection(stmtrs, 'AVAILBAL');
+                        const availBalInfo = availBal ? {
+                            BALAMT: getTagValue(availBal, 'BALAMT'),
+                            DTASOF: getTagValue(availBal, 'DTASOF')
+                        } : {};
+                        
+                        data.BANKMSGSRSV1 = {
+                            STMTTRNRS: {
+                                STMTRS: {
+                                    CURDEF: getTagValue(stmtrs, 'CURDEF'),
+                                    BANKACCTFROM: acctInfo,
+                                    BANKTRANLIST: {
+                                        DTSTART: bankTranList ? getTagValue(bankTranList, 'DTSTART') : null,
+                                        DTEND: bankTranList ? getTagValue(bankTranList, 'DTEND') : null,
+                                        STMTTRN: transactions
+                                    },
+                                    LEDGERBAL: ledgerBalInfo,
+                                    AVAILBAL: availBalInfo
+                                }
+                            }
+                        };
+                        
+                        console.log('Parsed', transactions.length, 'transactions');
+                    }
+                }
+            }
+            
+            // Parse CREDITCARDMSGSRSV1 (similar structure)
+            const ccSection = getSection(ofxData, 'CREDITCARDMSGSRSV1');
+            if (ccSection) {
+                const ccstmttrnrs = getSection(ccSection, 'CCSTMTTRNRS');
+                if (ccstmttrnrs) {
+                    const ccstmtrs = getSection(ccstmttrnrs, 'CCSTMTRS');
+                    if (ccstmtrs) {
+                        const ccAcctFrom = getSection(ccstmtrs, 'CCACCTFROM');
+                        const acctInfo = ccAcctFrom ? {
+                            ACCTID: getTagValue(ccAcctFrom, 'ACCTID')
+                        } : {};
+                        
+                        const bankTranList = getSection(ccstmtrs, 'BANKTRANLIST');
+                        const transactions = [];
+                        
+                        if (bankTranList) {
+                            const trnRegex = /<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi;
+                            let trnMatch;
+                            
+                            while ((trnMatch = trnRegex.exec(bankTranList)) !== null) {
+                                const trnContent = trnMatch[1];
+                                transactions.push({
+                                    TRNTYPE: getTagValue(trnContent, 'TRNTYPE'),
+                                    DTPOSTED: getTagValue(trnContent, 'DTPOSTED'),
+                                    TRNAMT: getTagValue(trnContent, 'TRNAMT'),
+                                    FITID: getTagValue(trnContent, 'FITID'),
+                                    CHECKNUM: getTagValue(trnContent, 'CHECKNUM'),
+                                    MEMO: getTagValue(trnContent, 'MEMO'),
+                                    NAME: getTagValue(trnContent, 'NAME')
+                                });
+                            }
+                        }
+                        
+                        const ledgerBal = getSection(ccstmtrs, 'LEDGERBAL');
+                        
+                        data.CREDITCARDMSGSRSV1 = {
+                            CCSTMTTRNRS: {
+                                CCSTMTRS: {
+                                    CURDEF: getTagValue(ccstmtrs, 'CURDEF'),
+                                    CCACCTFROM: acctInfo,
+                                    BANKTRANLIST: {
+                                        DTSTART: bankTranList ? getTagValue(bankTranList, 'DTSTART') : null,
+                                        DTEND: bankTranList ? getTagValue(bankTranList, 'DTEND') : null,
+                                        STMTTRN: transactions
+                                    },
+                                    LEDGERBAL: ledgerBal ? {
+                                        BALAMT: getTagValue(ledgerBal, 'BALAMT'),
+                                        DTASOF: getTagValue(ledgerBal, 'DTASOF')
+                                    } : {}
+                                }
+                            }
+                        };
+                    }
+                }
+            }
+            
+            return data;
+        }
+
+        // ===========================================
+        // Data Extraction Functions
+        // ===========================================
+        
+        /**
+         * Extract metadata from parsed OFX structure
+         */
+        function extractMetadata(data, headerInfo) {
+            const metadata = {};
+            
+            // Helper to safely get nested values - tries multiple path variations
+            const getValue = (obj, ...paths) => {
+                for (const path of paths) {
+                    let current = obj;
+                    const keys = path.split('.');
+                    
+                    for (const key of keys) {
+                        if (current && typeof current === 'object') {
+                            // Try multiple case variations
+                            current = current[key] 
+                                || current[key.toUpperCase()] 
+                                || current[key.toLowerCase()]
+                                || Object.keys(current).find(k => k.toUpperCase() === key.toUpperCase()) && current[Object.keys(current).find(k => k.toUpperCase() === key.toUpperCase())];
+                        } else {
+                            current = undefined;
+                            break;
+                        }
+                    }
+                    if (current !== undefined && current !== null && current !== '') return current;
+                }
+                return undefined;
+            };
+            
+            console.log('Extracting metadata from:', Object.keys(data));
+            
+            // OFX Version from header
+            metadata.ofxVersion = headerInfo.VERSION || 'Unknown';
+            metadata.encoding = headerInfo.ENCODING || headerInfo.CHARSET || 'Unknown';
+            
+            // Financial Institution Info
+            // Path: SIGNONMSGSRSV1 > SONRS > FI
+            const signonMsgs = getValue(data, 'SIGNONMSGSRSV1');
+            console.log('SIGNONMSGSRSV1:', signonMsgs);
+            
+            const sonrs = getValue(data, 'SIGNONMSGSRSV1.SONRS');
+            console.log('SONRS:', sonrs);
+            
+            const fi = getValue(data, 'SIGNONMSGSRSV1.SONRS.FI');
+            console.log('FI:', fi);
+            
+            if (fi) {
+                metadata.institution = getValue(fi, 'ORG') || '';
+                metadata.fid = getValue(fi, 'FID') || '';
+                metadata.intuBid = getValue(fi, 'INTU.BID') || '';
+            }
+            
+            // Server date/time
+            if (sonrs) {
+                const dtServer = getValue(sonrs, 'DTSERVER');
+                if (dtServer) {
+                    metadata.serverDate = formatOFXDate(dtServer);
+                }
+                metadata.language = getValue(sonrs, 'LANGUAGE') || '';
+            }
+            
+            // Find statement response (banking or credit card)
+            let stmtrs = getValue(data, 'BANKMSGSRSV1.STMTTRNRS.STMTRS');
+            console.log('Bank STMTRS:', stmtrs);
+            
+            // Try credit card statement if no bank statement
+            if (!stmtrs) {
+                stmtrs = getValue(data, 'CREDITCARDMSGSRSV1.CCSTMTTRNRS.CCSTMTRS');
+                console.log('CC STMTRS:', stmtrs);
+            }
+            
+            if (stmtrs) {
+                // Currency
+                metadata.currency = getValue(stmtrs, 'CURDEF') || 'USD';
+                console.log('Currency:', metadata.currency);
+                
+                // Account Info
+                // Bank accounts use BANKACCTFROM, credit cards use CCACCTFROM
+                const bankAcct = getValue(stmtrs, 'BANKACCTFROM');
+                const ccAcct = getValue(stmtrs, 'CCACCTFROM');
+                const acctFrom = bankAcct || ccAcct;
+                console.log('Account from:', acctFrom);
+                
+                if (acctFrom) {
+                    metadata.bankId = getValue(acctFrom, 'BANKID') || '';
+                    metadata.branchId = getValue(acctFrom, 'BRANCHID') || '';
+                    metadata.accountId = maskAccountNumber(getValue(acctFrom, 'ACCTID') || '');
+                    metadata.accountType = translateAccountType(getValue(acctFrom, 'ACCTTYPE') || (ccAcct ? 'CREDITCARD' : ''));
+                }
+                
+                // Transaction list date range
+                const bankTranList = getValue(stmtrs, 'BANKTRANLIST');
+                console.log('BANKTRANLIST:', bankTranList);
+                
+                if (bankTranList) {
+                    const dtStart = getValue(bankTranList, 'DTSTART');
+                    const dtEnd = getValue(bankTranList, 'DTEND');
+                    
+                    if (dtStart) metadata.dateStart = formatOFXDate(dtStart);
+                    if (dtEnd) metadata.dateEnd = formatOFXDate(dtEnd);
+                }
+                
+                // Ledger Balance
+                const ledgerBal = getValue(stmtrs, 'LEDGERBAL');
+                console.log('LEDGERBAL:', ledgerBal);
+                
+                if (ledgerBal) {
+                    const balAmt = getValue(ledgerBal, 'BALAMT');
+                    metadata.ledgerBalance = balAmt ? parseFloat(balAmt) : 0;
+                    const ledgerDate = getValue(ledgerBal, 'DTASOF');
+                    if (ledgerDate) metadata.ledgerBalanceDate = formatOFXDate(ledgerDate);
+                }
+                
+                // Available Balance
+                const availBal = getValue(stmtrs, 'AVAILBAL');
+                if (availBal) {
+                    const availAmt = getValue(availBal, 'BALAMT');
+                    metadata.availableBalance = availAmt ? parseFloat(availAmt) : 0;
+                    const availDate = getValue(availBal, 'DTASOF');
+                    if (availDate) metadata.availableBalanceDate = formatOFXDate(availDate);
+                }
+            }
+            
+            return metadata;
+        }
+        
+        /**
+         * Extract transactions from parsed OFX structure
+         */
+        function extractTransactions(data) {
+            const transactions = [];
+            
+            // Helper to safely get nested values
+            const getValue = (obj, ...paths) => {
+                for (const path of paths) {
+                    let current = obj;
+                    const keys = path.split('.');
+                    
+                    for (const key of keys) {
+                        if (current && typeof current === 'object') {
+                            current = current[key] 
+                                || current[key.toUpperCase()] 
+                                || current[key.toLowerCase()];
+                        } else {
+                            current = undefined;
+                            break;
+                        }
+                    }
+                    if (current !== undefined && current !== null) return current;
+                }
+                return undefined;
+            };
+            
+            // Find statement response
+            let stmtrs = getValue(data, 'BANKMSGSRSV1.STMTTRNRS.STMTRS');
+            let currency = 'USD';
+            
+            if (stmtrs) {
+                currency = getValue(stmtrs, 'CURDEF') || 'USD';
+            } else {
+                // Try credit card
+                stmtrs = getValue(data, 'CREDITCARDMSGSRSV1.CCSTMTTRNRS.CCSTMTRS');
+                if (stmtrs) {
+                    currency = getValue(stmtrs, 'CURDEF') || 'USD';
+                }
+            }
+            
+            if (!stmtrs) {
+                console.log('No statement response found');
+                return transactions;
+            }
+            
+            // Get transaction list
+            const bankTranList = getValue(stmtrs, 'BANKTRANLIST');
+            if (!bankTranList) {
+                console.log('No BANKTRANLIST found');
+                return transactions;
+            }
+            
+            // Get individual transactions
+            let stmtTrns = getValue(bankTranList, 'STMTTRN');
+            console.log('Raw STMTTRN:', stmtTrns);
+            
+            // Ensure it's an array
+            if (!stmtTrns) {
+                console.log('No transactions found in STMTTRN');
+                return transactions;
+            }
+            if (!Array.isArray(stmtTrns)) stmtTrns = [stmtTrns];
+            
+            console.log('Processing', stmtTrns.length, 'transactions');
+            
+            // Parse each transaction
+            stmtTrns.forEach((trn, index) => {
+                try {
+                    // Handle both object and string values for each field
+                    const getField = (fieldName) => {
+                        const val = trn[fieldName] || trn[fieldName.toUpperCase()] || trn[fieldName.toLowerCase()];
+                        // If val is an object (shouldn't be for leaf nodes), return empty
+                        if (val && typeof val === 'object') return '';
+                        return val || '';
+                    };
+                    
+                    const transaction = {
+                        // DTPOSTED: Date transaction was posted
+                        date: formatOFXDate(getField('DTPOSTED')),
+                        dateRaw: getField('DTPOSTED'),
+                        
+                        // TRNTYPE: Transaction type
+                        type: getField('TRNTYPE') || 'OTHER',
+                        typeDisplay: translateTransactionType(getField('TRNTYPE') || 'OTHER'),
+                        
+                        // TRNAMT: Transaction amount
+                        amount: parseFloat(getField('TRNAMT')) || 0,
+                        
+                        // FITID: Financial Institution Transaction ID
+                        fitId: getField('FITID'),
+                        
+                        // NAME: Payee name or description
+                        name: getField('NAME'),
+                        
+                        // MEMO: Additional information
+                        memo: getField('MEMO'),
+                        
+                        // CHECKNUM: Check number
+                        checkNum: getField('CHECKNUM'),
+                        
+                        // REFNUM: Reference number
+                        refNum: getField('REFNUM'),
+                        
+                        // Currency
+                        currency: currency
+                    };
+                    
+                    // Build description from available fields
+                    transaction.description = transaction.name || transaction.memo || 'No description';
+                    
+                    // Clean up check number (if "0", treat as empty)
+                    if (transaction.checkNum === '0') transaction.checkNum = '';
+                    
+                    transactions.push(transaction);
+                } catch (e) {
+                    console.warn(`Error parsing transaction ${index}:`, e, trn);
+                }
+            });
+            
+            console.log('Successfully parsed', transactions.length, 'transactions');
+            return transactions;
+        }
+        
+        /**
+         * Extract additional/unrecognized fields
+         */
+        function extractAdditionalFields(data) {
+            const knownFields = [
+                'SIGNONMSGSRSV1', 'BANKMSGSRSV1', 'CREDITCARDMSGSRSV1',
+                'SONRS', 'STATUS', 'FI', 'STMTTRNRS', 'STMTRS', 'CCSTMTTRNRS', 'CCSTMTRS',
+                'BANKACCTFROM', 'CCACCTFROM', 'BANKTRANLIST', 'LEDGERBAL', 'AVAILBAL',
+                'CODE', 'SEVERITY', 'MESSAGE', 'ORG', 'FID', 'INTU.BID',
+                'DTSERVER', 'LANGUAGE', 'CURDEF', 'BANKID', 'BRANCHID', 'ACCTID', 'ACCTTYPE',
+                'DTSTART', 'DTEND', 'STMTTRN', 'BALAMT', 'DTASOF',
+                'TRNTYPE', 'DTPOSTED', 'TRNAMT', 'FITID', 'NAME', 'MEMO', 'CHECKNUM', 'SIC',
+                'PAYEE', 'REFNUM', 'PAYEENAME'
+            ];
+            
+            const additional = [];
+            
+            function findUnknown(obj, prefix = '') {
+                if (!obj || typeof obj !== 'object') return;
+                
+                for (const [key, value] of Object.entries(obj)) {
+                    const fullKey = prefix ? `${prefix}.${key}` : key;
+                    
+                    if (typeof value === 'string' && !knownFields.includes(key.toUpperCase())) {
+                        additional.push({ name: key, value: value });
+                        console.log(`Unrecognized field: ${fullKey} = ${value}`);
+                    } else if (typeof value === 'object' && !Array.isArray(value)) {
+                        findUnknown(value, fullKey);
+                    }
+                }
+            }
+            
+            findUnknown(data);
+            return additional;
+        }
+
+        // ===========================================
+        // Formatting & Translation Functions
+        // ===========================================
+        
+        /**
+         * Format OFX date to human-readable format
+         * 
+         * OFX Date Formats:
+         * - YYYYMMDD (basic)
+         * - YYYYMMDDHHMMSS (with time)
+         * - YYYYMMDDHHMMSS.XXX (with milliseconds)
+         * - YYYYMMDDHHMMSS.XXX[TZ] (with timezone, e.g., [-5:EST])
+         */
+        function formatOFXDate(dateStr) {
+            if (!dateStr) return 'N/A';
+            
+            // Remove any whitespace
+            dateStr = dateStr.trim();
+            
+            // Extract just the date/time portion (remove timezone info)
+            const dateMatch = dateStr.match(/^(\d{4})(\d{2})(\d{2})(?:(\d{2})(\d{2})(\d{2}))?/);
+            
+            if (!dateMatch) {
+                console.warn('Could not parse date:', dateStr);
+                return dateStr;
+            }
+            
+            const year = parseInt(dateMatch[1]);
+            const month = parseInt(dateMatch[2]) - 1; // JavaScript months are 0-indexed
+            const day = parseInt(dateMatch[3]);
+            const hours = dateMatch[4] ? parseInt(dateMatch[4]) : 0;
+            const minutes = dateMatch[5] ? parseInt(dateMatch[5]) : 0;
+            const seconds = dateMatch[6] ? parseInt(dateMatch[6]) : 0;
+            
+            const date = new Date(year, month, day, hours, minutes, seconds);
+            
+            // Check for invalid date
+            if (isNaN(date.getTime())) {
+                return dateStr;
+            }
+            
+            // Format options
+            const options = {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            };
+            
+            // Add time if present
+            if (dateMatch[4]) {
+                options.hour = '2-digit';
+                options.minute = '2-digit';
+            }
+            
+            return date.toLocaleDateString('en-US', options);
+        }
+        
+        /**
+         * Format date as short numeric DD/MM/YY for compact printing
+         */
+        function formatShortDate(dateStr) {
+            if (!dateStr) return 'N/A';
+            
+            dateStr = dateStr.trim();
+            const dateMatch = dateStr.match(/^(\d{4})(\d{2})(\d{2})/);
+            
+            if (!dateMatch) return dateStr;
+            
+            const year = dateMatch[1].substring(2); // Last 2 digits of year
+            const month = dateMatch[2];
+            const day = dateMatch[3];
+            
+            return `${day}/${month}/${year}`;
+        }
+        
+        /**
+         * Translate account type codes to readable text
+         */
+        function translateAccountType(type) {
+            const types = {
+                'CHECKING': 'Checking Account',
+                'SAVINGS': 'Savings Account',
+                'MONEYMRKT': 'Money Market',
+                'CREDITLINE': 'Line of Credit',
+                'CREDITCARD': 'Credit Card',
+                'CD': 'Certificate of Deposit'
+            };
+            
+            return types[type.toUpperCase()] || type;
+        }
+        
+        /**
+         * Translate transaction type codes to readable text
+         * 
+         * OFX Transaction Types:
+         * - CREDIT: Generic credit
+         * - DEBIT: Generic debit
+         * - INT: Interest earned/charged
+         * - DIV: Dividend
+         * - FEE: Financial institution fee
+         * - SRVCHG: Service charge
+         * - DEP: Deposit
+         * - ATM: ATM withdrawal/deposit
+         * - POS: Point of sale (debit card)
+         * - XFER: Transfer
+         * - CHECK: Check
+         * - PAYMENT: Electronic payment
+         * - CASH: Cash withdrawal
+         * - DIRECTDEP: Direct deposit
+         * - DIRECTDEBIT: Direct debit
+         * - REPEATPMT: Repeating payment
+         * - OTHER: Other
+         */
+        function translateTransactionType(type) {
+            const types = {
+                'CREDIT': 'Credit',
+                'DEBIT': 'Debit',
+                'INT': 'Interest',
+                'DIV': 'Dividend',
+                'FEE': 'Fee',
+                'SRVCHG': 'Service Charge',
+                'DEP': 'Deposit',
+                'ATM': 'ATM',
+                'POS': 'Point of Sale',
+                'XFER': 'Transfer',
+                'CHECK': 'Check',
+                'PAYMENT': 'Payment',
+                'CASH': 'Cash',
+                'DIRECTDEP': 'Direct Deposit',
+                'DIRECTDEBIT': 'Direct Debit',
+                'REPEATPMT': 'Recurring',
+                'OTHER': 'Other'
+            };
+            
+            return types[type.toUpperCase()] || type;
+        }
+        
+        /**
+         * Mask account number for privacy (show last 4 digits)
+         */
+        function maskAccountNumber(accountNum) {
+            if (!accountNum || accountNum.length <= 4) return accountNum;
+            return '••••' + accountNum.slice(-4);
+        }
+        
+        /**
+         * Format currency amount
+         */
+        function formatCurrency(amount, currency = 'USD') {
+            const currencySymbols = {
+                'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥',
+                'CAD': 'C$', 'AUD': 'A$', 'CHF': 'CHF ', 'CNY': '¥',
+                'INR': '₹', 'MXN': 'MX$', 'BRL': 'R$', 'ARS': 'AR$',
+                'CLP': 'CL$', 'COP': 'CO$', 'PEN': 'S/', 'UYU': '$U'
+            };
+            
+            const symbol = currencySymbols[currency] || currency + ' ';
+            const formatted = Math.abs(amount).toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+            
+            return (amount < 0 ? '-' : '') + symbol + formatted;
+        }
+
+        // ===========================================
+        // Display Functions
+        // ===========================================
+        
+        /**
+         * Display all parsed results
+         */
+        function displayResults(metadata, transactions, additionalFields) {
+            // Hide loading
+            loading.classList.remove('active');
+            
+            // Display metadata
+            displayMetadata(metadata);
+            
+            // Display additional fields
+            displayAdditionalFields(additionalFields);
+            
+            // Display summary stats
+            displaySummaryStats(transactions, metadata.currency);
+            
+            // Display transactions
+            displayTransactions(transactions);
+            
+            // Show results
+            results.classList.add('active');
+        }
+        
+        /**
+         * Display metadata cards
+         */
+        function displayMetadata(metadata) {
+            const grid = document.getElementById('metadata-grid');
+            grid.innerHTML = '';
+            
+            // Define which fields to display and their icons
+            const fields = [
+                { key: 'institution', label: 'Financial Institution', icon: '🏦' },
+                { key: 'accountId', label: 'Account Number', icon: '💳' },
+                { key: 'accountType', label: 'Account Type', icon: '📁' },
+                { key: 'dateStart', label: 'Statement Start', icon: '📅' },
+                { key: 'dateEnd', label: 'Statement End', icon: '📅' },
+                { key: 'currency', label: 'Currency', icon: '💱' },
+                { key: 'ledgerBalance', label: 'Ledger Balance', icon: '💰', isCurrency: true },
+                { key: 'availableBalance', label: 'Available Balance', icon: '✅', isCurrency: true },
+                { key: 'serverDate', label: 'Statement Generated', icon: '🕐' },
+                { key: 'bankId', label: 'Bank/Routing ID', icon: '🔢' },
+                { key: 'branchId', label: 'Branch ID', icon: '📍' },
+                { key: 'fid', label: 'FI ID (FID)', icon: '🆔' },
+                { key: 'ofxVersion', label: 'OFX Version', icon: '📋' }
+            ];
+            
+            fields.forEach(field => {
+                const value = metadata[field.key];
+                if (value !== undefined && value !== '' && value !== null) {
+                    const card = document.createElement('div');
+                    card.className = 'metadata-card';
+                    
+                    let displayValue = value;
+                    let valueClass = '';
+                    
+                    if (field.isCurrency) {
+                        displayValue = formatCurrency(value, metadata.currency);
+                        valueClass = value >= 0 ? 'positive' : 'negative';
+                    }
+                    
+                    card.innerHTML = `
+                        <div class="label">
+                            <span>${field.icon}</span>
+                            ${field.label}
+                        </div>
+                        <div class="value ${valueClass}">${displayValue}</div>
+                    `;
+                    
+                    grid.appendChild(card);
+                }
+            });
+        }
+        
+        /**
+         * Display additional/unrecognized fields
+         */
+        function displayAdditionalFields(fields) {
+            const container = document.getElementById('additional-fields');
+            const grid = document.getElementById('additional-fields-grid');
+            
+            if (!fields || fields.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+            
+            grid.innerHTML = '';
+            
+            fields.forEach(field => {
+                const div = document.createElement('div');
+                div.className = 'additional-field';
+                div.innerHTML = `
+                    <div class="field-name">${field.name}</div>
+                    <div class="field-value">${field.value}</div>
+                `;
+                grid.appendChild(div);
+            });
+            
+            container.style.display = 'block';
+        }
+        
+        /**
+         * Display summary statistics
+         */
+        function displaySummaryStats(transactions, currency = 'USD') {
+            const container = document.getElementById('summary-stats');
+            
+            // Calculate stats
+            let totalCredits = 0;
+            let totalDebits = 0;
+            let creditCount = 0;
+            let debitCount = 0;
+            
+            transactions.forEach(txn => {
+                if (txn.amount >= 0) {
+                    totalCredits += txn.amount;
+                    creditCount++;
+                } else {
+                    totalDebits += Math.abs(txn.amount);
+                    debitCount++;
+                }
+            });
+            
+            const netChange = totalCredits - totalDebits;
+            
+            container.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-value">${transactions.length}</div>
+                    <div class="stat-label">Total Transactions</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" style="color: var(--success-color)">
+                        ${formatCurrency(totalCredits, currency)}
+                    </div>
+                    <div class="stat-label">Total Credits (${creditCount})</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" style="color: var(--danger-color)">
+                        ${formatCurrency(totalDebits, currency)}
+                    </div>
+                    <div class="stat-label">Total Debits (${debitCount})</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" style="color: ${netChange >= 0 ? 'var(--success-color)' : 'var(--danger-color)'}">
+                        ${formatCurrency(netChange, currency)}
+                    </div>
+                    <div class="stat-label">Net Change</div>
+                </div>
+            `;
+        }
+        
+        /**
+         * Display transactions in table (READ-ONLY, no sorting)
+         */
+        function displayTransactions(transactions) {
+            const tbody = document.getElementById('transactions-body');
+            const countBadge = document.getElementById('transaction-count');
+            
+            // Update count
+            countBadge.textContent = transactions.length;
+            
+            // Clear existing rows
+            tbody.innerHTML = '';
+            
+            if (transactions.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="no-transactions">
+                            No transactions found in this statement.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            // Display transactions in file order (no sorting)
+            transactions.forEach(txn => {
+                const row = document.createElement('tr');
+                
+                // Determine amount styling
+                const amountClass = txn.amount >= 0 ? 'positive' : 'negative';
+                
+                // Determine type badge class
+                const typeClass = `type-${txn.type.toUpperCase()}`;
+                
+                // Format date both ways - long for screen, short for print
+                const shortDate = formatShortDate(txn.dateRaw);
+                
+                row.innerHTML = `
+                    <td>
+                        <span class="date-screen">${txn.date}</span>
+                        <span class="date-print">${shortDate}</span>
+                    </td>
+                    <td><span class="type-badge ${typeClass}">${txn.typeDisplay}</span></td>
+                    <td class="description" title="${escapeHtml(txn.description)}">${escapeHtml(truncate(txn.description, 50))}</td>
+                    <td class="amount ${amountClass}">${formatCurrency(txn.amount, txn.currency)}</td>
+                    <td class="txn-id" title="${escapeHtml(txn.fitId)}">${truncate(txn.fitId, 20) || '—'}</td>
+                    <td>${txn.checkNum || '—'}</td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+        
+        /**
+         * Helper: Escape HTML to prevent XSS
+         */
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        /**
+         * Helper: Truncate text with ellipsis
+         */
+        function truncate(text, maxLength) {
+            if (!text) return '';
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength - 3) + '...';
+        }
+    </script>
+</body>
+</html>
